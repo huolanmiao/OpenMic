@@ -1,0 +1,85 @@
+# Git忽略文件
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# 虚拟环境
+venv/
+ENV/
+env/
+.venv/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# 环境变量（敏感信息）
+.env
+.env.local
+.env.*.local
+
+# 日志
+*.log
+logs/
+
+# 测试覆盖率
+htmlcov/
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+.pytest_cache/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# 临时文件
+*.tmp
+*.temp
+.DS_Store
+Thumbs.db
+
+# 输出文件（保留目录但忽略生成的文件）
+outputs/*.json
+outputs/*.mp3
+outputs/*.wav
+
+# 缓存
+cache/
+.cache/
+
+# 模型文件
+*.pt
+*.pth
+*.ckpt
+models/
+
+# 数据集（太大不上传）
+data/
+datasets/

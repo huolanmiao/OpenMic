@@ -1,0 +1,35 @@
+# OpenMic: 基于多智能体框架的智能脱口秀生成系统
+# 核心依赖
+
+# AutoGen 0.10+ 多智能体框架
+pyautogen>=0.10.0
+autogen-agentchat>=0.4.0
+autogen-ext>=0.4.0
+
+# 大语言模型相关
+openai>=1.0.0
+httpx>=0.25.0
+
+# 语音合成相关 (任务三)
+# ChatTTS
+# librosa>=0.10.0
+# soundfile>=0.12.0
+# numpy>=1.24.0
+
+# Web框架 (任务四)
+fastapi>=0.104.0
+uvicorn>=0.24.0
+streamlit>=1.28.0
+
+# 数据处理
+pandas>=2.0.0
+pydantic>=2.0.0
+
+# 工具库
+python-dotenv>=1.0.0
+loguru>=0.7.0
+rich>=13.0.0
+
+# 异步支持
+aiohttp>=3.9.0
+asyncio-throttle>=1.0.0

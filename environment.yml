@@ -1,0 +1,45 @@
+# OpenMic Conda 环境配置
+# 使用方法: conda env create -f environment.yml
+# 激活环境: conda activate openmic
+
+name: openmic
+channels:
+  - conda-forge
+  - defaults
+
+dependencies:
+  # Python版本
+  - python=3.11
+  
+  # 基础依赖
+  - pip
+  
+  # pip安装的包
+  - pip:
+    # AutoGen 0.7+ 多智能体框架
+    - autogen-agentchat>=0.7.0
+    - autogen-ext[openai]>=0.7.0
+    
+    # 大语言模型相关
+    - openai>=1.0.0
+    - httpx>=0.25.0
+    
+    # Web框架 (任务四)
+    - fastapi>=0.104.0
+    - uvicorn>=0.24.0
+    - streamlit>=1.28.0
+    
+    # 数据验证
+    - pydantic>=2.0.0
+    
+    # 工具库
+    - python-dotenv>=1.0.0
+    - rich>=13.0.0
+    
+    # 异步支持
+    - aiofiles>=23.0.0
+    
+    # 语音合成相关 (任务三 - 按需取消注释)
+    # - librosa>=0.10.0
+    # - soundfile>=0.12.0
+    # - ChatTTS
