@@ -189,3 +189,13 @@ class SpeechSynthesizer:
         """
         # TODO: 实现完整的语音生成流程
         raise NotImplementedError("任务三待实现")
+
+
+
+__all__ = [
+    "EmotionalTTSEngine",
+    "RhythmController",
+    "FillerWordProcessor",
+    "MOSEvaluator",
+    "SpeechSynthesizer",
+]

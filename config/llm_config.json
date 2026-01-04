@@ -2,7 +2,7 @@
     "config_list": [
         {
             "model": "deepseek-chat",
-            "api_key": "YOUR_DEEPSEEK_API_KEY",
+            "api_key": "sk-fcae079e57564b4d983ab178ddaa2552",
             "base_url": "https://api.deepseek.com/v1",
             "api_type": "openai"
         }
