@@ -10,15 +10,15 @@ class TTSEngine:
         self,
         chat: ChatTTS.Chat,
         spk_emb,
-        speed_prompt: str = "[speed_4]",
-        oral_prompt: str = "[oral_2][laugh_1][break_4]",
-        max_new_token: int = 4096,
+        max_new_token: int = 2048,
     ) -> None:
         self.chat = chat
         self.spk_emb = spk_emb
-        self.speed_prompt = speed_prompt
-        self.oral_prompt = oral_prompt
         self.max_new_token = max_new_token
+
+    def set_speaker(self, spk_emb) -> None:
+        """Update current speaker embedding."""
+        self.spk_emb = spk_emb
 
     def synthesize(
         self,
@@ -75,7 +75,7 @@ class TTSEngine:
                 max_new_token=self.max_new_token,
             )
             params_refine_text = ChatTTS.Chat.RefineTextParams(
-                prompt=f"[oral_2]{laugh_prompt}{pause_prompt}",
+                prompt=f"[oral_1]{laugh_prompt}{pause_prompt}",
                 max_new_token=self.max_new_token // 2,
             )
 

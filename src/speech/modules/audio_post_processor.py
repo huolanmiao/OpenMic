@@ -1,4 +1,6 @@
 import numpy as np
+import scipy.signal
+import math
 from typing import List, Dict, Any, Optional
 
 
@@ -52,6 +54,26 @@ class AudioPostProcessor:
                 silence = np.zeros(int(pause_sec * sr), dtype=np.float32)
                 parts.append(self._apply_fade(silence, self.fade_ms))
         return np.concatenate(parts)
+
+    def resample(self, wav: np.ndarray, target_sr: int) -> np.ndarray:
+        """Resample audio to target sample rate using polyphase filtering."""
+        if self.sample_rate == target_sr or len(wav) == 0:
+            return wav
+        
+        # Calculate greatest common divisor to find integer up/down factors
+        gcd = math.gcd(self.sample_rate, target_sr)
+        up = target_sr // gcd
+        down = self.sample_rate // gcd
+        
+        # Use resample_poly for better quality on audio
+        try:
+            resampled = scipy.signal.resample_poly(wav, up, down)
+            return resampled.astype(np.float32)
+        except Exception as e:
+            print(f"AudioPostProcessor: resample failed ({e}), falling back to simple resample.")
+            # Fallback to FFT-based resample if poly fails (though poly is usually robust)
+            num_samples = int(len(wav) * target_sr / self.sample_rate)
+            return scipy.signal.resample(wav, num_samples).astype(np.float32)
 
     def _lowpass_fft(self, wav: np.ndarray, cutoff_hz: float) -> np.ndarray:
         # Simple FFT low-pass: zero out bins above cutoff

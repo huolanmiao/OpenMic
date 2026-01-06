@@ -1,13 +1,19 @@
 import os
 import ChatTTS
 import numpy as np
-from typing import List, Any, Dict, Union
+import torch
+from typing import List, Any, Dict, Union, Optional
+
+from src.speech.chattts_patch import apply_chattts_patch
 
 from src.speech.modules.text_refiner import TextRefiner
 from src.speech.modules.filler_injector import FillerInjector
 from src.speech.modules.tts_engine import TTSEngine
 from src.speech.modules.emotion_rhythm_controller import EmotionRhythmController
 from src.speech.modules.audio_post_processor import AudioPostProcessor
+
+# Apply ChatTTS runtime patch (cache-length guard) so users don't need to modify site-packages.
+apply_chattts_patch()
 
 
 class StandupSpeechPipeline:
@@ -27,6 +33,10 @@ class StandupSpeechPipeline:
         enable_controller: bool = True,
         enable_post_process: bool = True,
         sample_rate: int = 24000,
+        voice_bank_dir: str = "/root/OpenMic/voices",
+        voice_name: Optional[str] = None,
+        target_sample_rate: int = 16000,
+        enable_resample: bool = True,
     ) -> None:
         self.device = device
         self.use_llm = use_llm
@@ -34,14 +44,21 @@ class StandupSpeechPipeline:
         self.enable_controller = enable_controller
         self.enable_post_process = enable_post_process
         self.sample_rate = sample_rate
+        self.target_sample_rate = target_sample_rate
+        self.enable_resample = enable_resample
 
+        if ChatTTS is None:
+            raise ImportError(
+                "ChatTTS is not installed. Install it with `pip install ChatTTS` and ensure it is on your PYTHONPATH."
+            )
         # Load ChatTTS locally (per user constraint: no HF download)
         self.chat = ChatTTS.Chat()
         print(f"Loading ChatTTS from {model_path}...")
-        self.chat.load (source="custom", custom_path=model_path, device=device)
-
-        # Speaker embedding: keep stable for consistency; allow override via env seed later if needed
-        self.spk_emb = self.chat.sample_random_speaker()
+        self.chat.load(source="custom", custom_path=model_path, device=device)
+        self.voice_bank_dir = voice_bank_dir
+        self.voice_bank = self._load_voice_bank(voice_bank_dir)
+        # Speaker embedding: choose by name if provided, otherwise random for variety
+        self.spk_emb = self._select_speaker(voice_name)
 
         # Modules
         self.text_refiner = TextRefiner()
@@ -57,6 +74,16 @@ class StandupSpeechPipeline:
         # Final guard: drop empty strings
         refined = [t.strip() for t in refined if t and t.strip()]
         return refined
+
+    def list_voices(self) -> Dict[str, Dict[str, str]]:
+        """Return available voices from the voice bank with comments."""
+        return self.voice_bank
+
+    def set_voice(self, voice_name: Optional[str] = None):
+        """Switch current speaker embedding; None or 'random' will resample."""
+        self.spk_emb = self._select_speaker(voice_name)
+        self.tts_engine.set_speaker(self.spk_emb)
+        return self.spk_emb
 
     def synthesize(
         self,
@@ -81,6 +108,8 @@ class StandupSpeechPipeline:
         )
         if return_segments:
             audio = processed_segments
+            if self.enable_resample and self.target_sample_rate != self.sample_rate:
+                audio = [self.audio_processor.resample(seg, self.target_sample_rate) for seg in audio]
         else:
             audio = (
                 self.audio_processor.concat_with_pauses(
@@ -91,6 +120,8 @@ class StandupSpeechPipeline:
                 if self.enable_post_process
                 else self._simple_concat(processed_segments)
             )
+            if self.enable_resample and self.target_sample_rate != self.sample_rate:
+                audio = self.audio_processor.resample(audio, self.target_sample_rate)
         return {"audio": audio, "controls": controls}
 
     @staticmethod
@@ -120,13 +151,12 @@ class StandupSpeechPipeline:
         audio = result["audio"]
         print(f"Audio generated, shape: {audio.shape if hasattr(audio, 'shape') else 'segments'}")
 
-        if return_text or return_control:
-            return {
-                "audio": audio,
-                "text": refined_text if return_text else None,
-                "controls": result["controls"] if return_control else None,
-            }
-        return audio
+        
+        return {
+            "audio": audio,
+            "text": refined_text if return_text else None,
+            "controls": result["controls"] if return_control else None,
+        }
 
     def run_segments(
         self,
@@ -155,3 +185,41 @@ class StandupSpeechPipeline:
                 "controls": result["controls"] if return_control else None,
             }
         return wavs
+
+    def _load_voice_bank(self, directory: str) -> Dict[str, Dict[str, str]]:
+        if not directory or not os.path.isdir(directory):
+            return {}
+        bank: Dict[str, Dict[str, str]] = {}
+        for fname in os.listdir(directory):
+            if not fname.endswith(".pt"):
+                continue
+            stem = os.path.splitext(fname)[0]
+            pt_path = os.path.join(directory, fname)
+            txt_path = os.path.join(directory, f"{stem}.txt")
+            comment = ""
+            try:
+                if os.path.isfile(txt_path):
+                    with open(txt_path, "r", encoding="utf-8") as f:
+                        comment = f.read().strip()
+            except Exception:
+                comment = ""
+            bank[stem] = {"path": pt_path, "comment": comment}
+        return bank
+
+    def _select_speaker(self, voice_name: Optional[str]):
+        # 'random' or None -> random speaker
+        if voice_name is None or (isinstance(voice_name, str) and voice_name.lower() == "random"):
+            return self.chat.sample_random_speaker()
+
+        meta = self.voice_bank.get(voice_name) if hasattr(self, "voice_bank") else None
+        if meta:
+            try:
+                spk = torch.load(meta["path"], map_location=self.device if torch.cuda.is_available() else "cpu")
+                print(f"Loaded speaker: {voice_name} ({meta.get('comment', '')})")
+                return spk
+            except Exception as exc:
+                print(f"Warning: failed to load speaker '{voice_name}', fallback random. Reason: {exc}")
+        else:
+            if voice_name:
+                print(f"Voice '{voice_name}' not found in {self.voice_bank_dir}, fallback random.")
+        return self.chat.sample_random_speaker()

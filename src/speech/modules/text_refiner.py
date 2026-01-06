@@ -36,7 +36,7 @@ class TextRefiner:
         lines: List[str]
         if use_llm and self.client:
             try:
-                lines = self._refine_with_llm(raw_text)
+                lines = self._refine_with_llm_two_step(raw_text)
             except Exception as exc:  # pragma: no cover - best effort fallback
                 print(f"TextRefiner: LLM rewrite failed, falling back. Reason: {exc}")
                 lines = self._fallback_clean(raw_text)
@@ -53,30 +53,68 @@ class TextRefiner:
             normalized.append(ln)
         return normalized
 
-    def _refine_with_llm(self, raw_text: str) -> List[str]:
-        prompt = (
-            "你是一名脱口秀语音导演，帮忙把稿子改写为 ChatTTS 可读文本。"
-            "要求："
-            "1) 去掉与发音无关的符号/标注；"
-            "2) 标点符号只保留 , . ? ! ， 。 （感叹号和问号是英文版的）， 并保持句读自然；"
-            "3) 将表演标注中需要停顿或者转为指令，你只能使用以下三种指令：[laugh] 笑声，[uv_break] 短停顿，[lbreak] 长停顿；"
-            "4) 读法标记：中英混排时，注意将容易读混的词语，比如2025转换成中文，如二零二五；此外，由于[laugh]是标记，为了避免混淆原文的“laugh”，请将其替换为“Laugh”；"
-            "5) 用换行符号分段：每段尽量不超过5句，并且爆出笑点后需要分段；"
-            "6) 输出只包含改写后的文本，不要解释。"
-            "示例："
-            """原文：大家好！~~欢迎来到我的脱口秀节目。（笑）今天我们来聊聊**编程**。（走下台）编程真有趣，对吧？
-            改写后：大家好! 欢迎来到我的脱口秀节目。[laugh]\n今天我们来聊聊[uv_break]编程。[lbreak]\n编程真有趣，对吧？"""
+    def _refine_with_llm_two_step(self, raw_text: str) -> List[str]:
+        """Two-pass LLM pipeline: rewrite first, then add laugh/pause marks."""
+        # Pass 1: rewrite & clean
+        prompt_rewrite = (
+            "你是一名脱口秀稿件改写助手，先完成【内容改写与清洗】。\n"
+            "要求：\n"
+            "1) 去掉与发音无关的符号/标注（如表情、Markdown、舞台动作）。\n"
+            "2) 标点只保留逗号、句号、问号、感叹号（中英文均可），保持语义自然。\n"
+            "3) 中英混排时，将容易读混的数字或英文改写为容易朗读的形式，例如 2025 -> 二零二五，Laugh（作为单词）改写为大写 L 开头的单词。\n"
+            "4) 按语义分段，每段 4-5 句左右；爆笑点或话题切换后必须分段。\n"
+            "5) 输出只包含改写文本，多段用换行分隔，不要任何解释。\n"
+            "示例 1：\n"
+            "原文：大家好！~~欢迎来到我的脱口秀节目。（笑）今天我们来聊聊**编程**。（走下台）编程真有趣，对吧？\n"
+            "改写后：\n"
+            "大家好[uv_break]! 欢迎来到我的脱口秀节目。\n今天我们来聊聊编程。编程真有趣，对吧？\n"
+            "示例 2：\n"
+            "原文：2025 年我想去美国旅行，然后学点 jazz，顺便练练 laugh 的发音。还有，我想在旅途中试试即兴表演。\n"
+            "改写后：\n"
+            "二零二五年我想去美国旅行，然后学点爵士，顺便练练 Laugh 这个词的发音。[lbreak]还有，在旅途中我还想试试即兴表演。\n"
         )
-        response = self.client.chat.completions.create(
+
+        resp1 = self.client.chat.completions.create(
             model=self.model,
             messages=[
-                {"role": "system", "content": prompt},
+                {"role": "system", "content": prompt_rewrite},
                 {"role": "user", "content": raw_text},
             ],
             stream=False,
         )
-        content = response.choices[0].message.content
-        lines = [line.strip() for line in content.split("\n") if line.strip()]
+        text_stage1 = resp1.choices[0].message.content
+        stage1_lines = [ln.strip() for ln in text_stage1.split("\n") if ln.strip()]
+
+        # Pass 2: add performance marks (laugh / short pause / long pause)
+        prompt_marks = (
+            "你现在是一名表演节奏导演，对已改写好的文本增加【笑声/停顿】指令。\n"
+            "仅使用三种指令：\n"
+            "- [laugh] 笑声\n"
+            "- [uv_break] 短停顿\n"
+            "- [lbreak] 长停顿\n"
+            "规则：\n"
+            "1) 爆点/包袱后按语境可加入 [laugh] 或长停顿；\n"
+            "2) 情绪转折、提问前可加 [uv_break]；铺垫到 punchline 前可用 [lbreak]；\n"            
+            "3) 不要在一句话里反复插太多标记，适度即可；\n"
+            "4) 输出仍按行分段，只在需要的位置插入上述指令，不要新增其他标记。\n"
+            "示例：\n"
+            "输入：今天我们来聊聊编程。编程真有趣，对吧？\n"
+            "输出：今天我们来聊聊编程。[uv_break]编程真有趣，对吧？[laugh]\n"
+            "输入：二零二五年我想去美国旅行，然后学点爵士。顺便练练 Laugh 这个词的发音。\n"
+            "输出：二零二五年我想去美国旅行。[uv_break]然后学点爵士。[uv_break]顺便练练 Laugh 这个词的发音。\n"
+        )
+
+        joined = "\n".join(stage1_lines)
+        resp2 = self.client.chat.completions.create(
+            model=self.model,
+            messages=[
+                {"role": "system", "content": prompt_marks},
+                {"role": "user", "content": joined},
+            ],
+            stream=False,
+        )
+        text_stage2 = resp2.choices[0].message.content
+        lines = [ln.strip() for ln in text_stage2.split("\n") if ln.strip()]
         return lines
 
     def _fallback_clean(self, raw_text: str) -> List[str]:
