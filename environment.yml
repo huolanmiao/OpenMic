@@ -40,6 +40,7 @@ dependencies:
     - aiofiles>=23.0.0
     
     # 语音合成相关 (任务三 - 按需取消注释)
-    # - librosa>=0.10.0
-    # - soundfile>=0.12.0
-    # - ChatTTS
+    - librosa>=0.10.0
+    - soundfile>=0.12.0
+    - ChatTTS
+    - jieba

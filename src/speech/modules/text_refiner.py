@@ -23,23 +23,62 @@ class TextRefiner:
         self,
         api_key: Optional[str] = None,
         base_url: Optional[str] = None,
-        model: str = "deepseek-chat",
+        model: Optional[str] = None,
     ) -> None:
-        self.api_key = api_key or os.getenv("DEEPSEEK_API_KEY")
-        self.base_url = base_url or os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
-        self.model = model
+        # Load from centralized config if not provided
+        try:
+            from src.config.settings import config_manager
+            llm_config = config_manager.llm_config
+            default_api_key = llm_config.api_key
+            default_base_url = llm_config.base_url
+            default_model = llm_config.model
+        except ImportError:
+            # Fallback for standalone usage
+            default_api_key = os.getenv("DEEPSEEK_API_KEY")
+            default_base_url = os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
+            default_model = "deepseek-chat"
+
+        self.api_key = api_key or default_api_key
+        self.base_url = base_url or default_base_url
+        self.model = model or default_model
+        
         self.client: Optional[OpenAI] = None
         if self.api_key:
             self.client = OpenAI(api_key=self.api_key, base_url=self.base_url)
 
     def refine(self, raw_text: str, use_llm: bool = True) -> List[str]:
         lines: List[str]
-        if use_llm and self.client:
-            try:
-                lines = self._refine_with_llm_two_step(raw_text)
-            except Exception as exc:  # pragma: no cover - best effort fallback
-                print(f"TextRefiner: LLM rewrite failed, falling back. Reason: {exc}")
+        
+        if use_llm:
+            if not self.client:
+                msg = (
+                    "⚠ TEXT REFINER WARNING ⚠\n"
+                    "LLM refinement enabled but no API Client configured (Check API Key/Base URL).\n"
+                    "Falling back to rule-based processing (Performance markers might be missing)."
+                )
+                try:
+                    from rich import print as rprint
+                    rprint(f"[bold yellow]{msg}[/bold yellow]")
+                except ImportError:
+                    print(f"\n{'!'*40}\n{msg}\n{'!'*40}\n")
+                
                 lines = self._fallback_clean(raw_text)
+            else:
+                try:
+                    lines = self._refine_with_llm_two_step(raw_text)
+                except Exception as exc:  # pragma: no cover - best effort fallback
+                    msg = (
+                        "❌ TEXT REFINER ERROR ❌\n"
+                        f"LLM call failed: {exc}\n"
+                        "Falling back to rule-based processing."
+                    )
+                    try:
+                        from rich import print as rprint
+                        rprint(f"[bold red]{msg}[/bold red]")
+                    except ImportError:
+                        print(f"\n{'!'*40}\n{msg}\n{'!'*40}\n")
+
+                    lines = self._fallback_clean(raw_text)
         else:
             lines = self._fallback_clean(raw_text)
 
@@ -112,6 +151,7 @@ class TextRefiner:
                 {"role": "user", "content": joined},
             ],
             stream=False,
+            temperature=0.2, 
         )
         text_stage2 = resp2.choices[0].message.content
         lines = [ln.strip() for ln in text_stage2.split("\n") if ln.strip()]
@@ -157,6 +197,7 @@ class TextRefiner:
 
         # Collapse repeated brackets like [[[uv_break]]] -> [uv_break]
         text = re.sub(r"\[+\s*(uv_break|lbreak|laugh)\s*\]+", repl, text)
-        # Wrap bare tokens
-        text = re.sub(r"\b(uv_break|lbreak|laugh)\b", repl, text)
+        # Wrap bare tokens that are NOT already bracketed
+        # Use negative lookbehind (?<!\[) and lookahead (?!\])
+        text = re.sub(r"(?<!\[)\b(uv_break|lbreak|laugh)\b(?!\])", repl, text)
         return text

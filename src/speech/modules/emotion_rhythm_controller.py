@@ -4,10 +4,10 @@ from typing import List, Optional, Dict, Any
 
 from openai import OpenAI
 
-DEFAULT_SPEED = 4  # maps to [speed_5]
+DEFAULT_SPEED = 3  # maps to [speed_3] (neutral)
 DEFAULT_LAUGH = 0
 DEFAULT_PAUSE = 3
-DEFAULT_END_PAUSE = 0.8
+DEFAULT_END_PAUSE = 0.5
 
 
 class EmotionRhythmController:
@@ -42,6 +42,7 @@ class EmotionRhythmController:
                 ],
                 stream=False,
                 response_format={"type": "json_object"},
+                temperature=0.1,
             )
             content = resp.choices[0].message.content
             data = json.loads(content)
@@ -63,11 +64,11 @@ class EmotionRhythmController:
         return (
             "你是一名脱口秀语音导演。对下面每一段文本打分并返回 JSON 数组（长度与输入段数一致）。"
             "每个元素字段："
-            "'laugh_level': 0=不加笑声（默认首选）, 1=轻微笑声, 2=大量笑声（仅在强笑点且表演效果需要表演者笑时使用）；"
-            "'speed_level': 1=极慢,2=较慢,3=中,4=较快,5=极快；"
+            "'laugh_level': 0=不加笑声（默认首选）, 1=加入笑声（仅在活跃气氛时可用）；"
+            "'speed_level': 1=慢,2=正常,3=较快,4=快,5=极快（默认为2）；"
             "'pause_level': 1=连续,2=略停顿,3=正常停顿,4=较多停顿,5=大量停顿；"
-            "'end_pause_sec': 段尾停顿秒数，范围0.3-1.2；若检测为笑点，才建议>=1，否则尽量 <0.6。"
-            "返回格式示例: [{\"laugh_level\":0,\"speed_level\":4,\"pause_level\":3,\"end_pause_sec\":0.9}, ...]"
+            "'end_pause_sec': 段尾停顿秒数，范围0.3-1.2；若检测为笑点，才建议>=0.8，否则尽量 <0.5。"
+            "返回格式示例: [{\"laugh_level\":0,\"speed_level\":3,\"pause_level\":3,\"end_pause_sec\":0.5}, ...]"
             "必须输出合法 JSON，仅输出数组本身，禁止额外说明。"
         )
 

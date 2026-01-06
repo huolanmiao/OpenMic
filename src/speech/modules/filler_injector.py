@@ -9,7 +9,7 @@ from openai import OpenAI
 
 # Expanded filler lists based on common speech patterns
 FILLERS = {
-    "start": ["呃", "那个", "其实", "就是", "嗯", "哎", "说实话", "怎么说呢"],
+    "start": ["呃", "那个", "其实", "就是", "嗯", "哎", "说实话"],
     "middle": ["呃", "那个", "就是", "你知道吧", "然后", "就像", "那个什么"],
     "end": ["你知道吧", "就是说", "对吧", "嗯", "是吧", "行吧", "对不对"],
 }
@@ -166,6 +166,6 @@ class FillerInjector:
         text = re.sub(r"\[+\s*(uv_break|lbreak|laugh)\s*\]+", wrap, text)
         # Fix single brackets with spaces
         text = re.sub(r"\[\s*(uv_break|lbreak|laugh)\s*\]", wrap, text)
-        # Wrap bare tokens
-        text = re.sub(r"\b(uv_break|lbreak|laugh)\b", wrap, text)
+        # Wrap bare tokens that are NOT already bracketed
+        text = re.sub(r"(?<!\[)\b(uv_break|lbreak|laugh)\b(?!\])", wrap, text)
         return text

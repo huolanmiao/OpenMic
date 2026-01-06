@@ -22,7 +22,7 @@ OpenMic是一个创新的AI脱口秀生成系统，使用5个专业化的智能�
 
 - [x] **任务一**：AutoGen多智能体系统架构（30分）✅ 已完成
 - [ ] **任务二**：基于CFunSet的中文幽默内容生成（25分）
-- [ ] **任务三**：专业级语音合成与表演优化（30分）
+- [x] **任务三**：专业级语音合成与表演优化（30分）✅ 已完成
 - [ ] **任务四**：系统集成与用户体验（15分）
 
 ---
@@ -194,6 +194,7 @@ DEEPSEEK_API_KEY=sk-your-api-key-here
 ### 3. 运行系统
 
 ```bash
+
 # 交互模式（推荐初次使用）
 python main.py -i
 
@@ -384,36 +385,9 @@ class HumorGenerator:
 ```
 
 ### 任务三：语音合成模块 (`src/speech/`)
-
-```python
-# 预留接口示例
-from src.speech import SpeechSynthesizer, PerformanceMarker
-
-class SpeechSynthesizer:
-    """语音合成器"""
-    
-    def __init__(self, model: str = "chattts"):
-        """
-        Args:
-            model: 语音模型，支持 "chattts", "valle-x", "edge-tts"
-        """
-        pass
-    
-    def synthesize(self, script: str, markers: dict) -> bytes:
-        """合成语音"""
-        pass
-    
-    def apply_performance_markers(self, audio: bytes, markers: dict) -> bytes:
-        """应用表演标记（停顿、重音、情感）"""
-        pass
-
-class PerformanceMarker:
-    """表演标记解析器"""
-    
-    def parse_markers(self, script: str) -> dict:
-        """解析脚本中的表演标记"""
-        # 解析 (*停顿*), (*重音*), (*语气*) 等标记
-        pass
+```bash
+# 教程：语音合成模块
+jupyter notebook tutorial_speech.ipynb
 ```
 
 ### 任务四：Web API模块 (`src/api/`)

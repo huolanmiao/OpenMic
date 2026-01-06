@@ -26,19 +26,33 @@ class StandupSpeechPipeline:
 
     def __init__(
         self,
-        model_path: str = "/home/zhuran/ran/OpenMic/models",
+        model_path: Optional[str] = None,
+        model_source: str = "custom",
         device: str = "cuda",
         use_llm: bool = True,
         enable_fillers: bool = True,
         enable_controller: bool = True,
         enable_post_process: bool = True,
         sample_rate: int = 24000,
-        voice_bank_dir: str = "/root/OpenMic/voices",
+        voice_bank_dir: Optional[str] = None,
         voice_name: Optional[str] = None,
         target_sample_rate: int = 16000,
         enable_resample: bool = True,
+        llm_config: Optional[Dict[str, Any]] = None,
     ) -> None:
         self.device = device
+
+        if model_path is None or voice_bank_dir is None:
+            # src/speech/pipeline.py -> src/speech -> src -> .
+            current_dir = os.path.dirname(os.path.abspath(__file__))
+            project_root = os.path.dirname(os.path.dirname(current_dir))
+            
+            if model_path is None:
+                # Default model path in project root
+                model_path = os.path.join(project_root, "models")
+            if voice_bank_dir is None:
+                voice_bank_dir = os.path.join(project_root, "voices")
+
         self.use_llm = use_llm
         self.enable_fillers = enable_fillers
         self.enable_controller = enable_controller
@@ -51,17 +65,48 @@ class StandupSpeechPipeline:
             raise ImportError(
                 "ChatTTS is not installed. Install it with `pip install ChatTTS` and ensure it is on your PYTHONPATH."
             )
-        # Load ChatTTS locally (per user constraint: no HF download)
+        
         self.chat = ChatTTS.Chat()
-        print(f"Loading ChatTTS from {model_path}...")
-        self.chat.load(source="custom", custom_path=model_path, device=device)
+        print(f"Loading ChatTTS (source='{model_source}', path='{model_path}')...")
+        
+        # Load capability with status check
+        if not self.chat.load(source=model_source, custom_path=model_path, device=device):
+            error_msg = (
+                f"\n[Error] Failed to load ChatTTS models from {model_path} (source={model_source}).\n"
+                "Please check if the models are missing or corrupted.\n"
+            )
+            if model_source == "custom":
+                error_msg += (
+                    "Tip: You can download the models manually, "
+                    "or try initializing with `model_source='huggingface'` or `'local'` "
+                    "to allow automatic downloading.\n"
+                )
+            elif model_source == "huggingface":
+                error_msg += "Tip: Check your network connection to HuggingFace.\n"
+            
+            print(error_msg)
+            raise RuntimeError("ChatTTS model loading failed.")
+
         self.voice_bank_dir = voice_bank_dir
         self.voice_bank = self._load_voice_bank(voice_bank_dir)
         # Speaker embedding: choose by name if provided, otherwise random for variety
         self.spk_emb = self._select_speaker(voice_name)
 
         # Modules
-        self.text_refiner = TextRefiner()
+        api_key = None
+        base_url = None
+        model = None
+        
+        if llm_config:
+            # Handle AutoGen style config list
+            config_list = llm_config.get("config_list", [])
+            if config_list:
+                cfg = config_list[0]
+                api_key = cfg.get("api_key")
+                base_url = cfg.get("base_url")
+                model = cfg.get("model")
+                
+        self.text_refiner = TextRefiner(api_key=api_key, base_url=base_url, model=model)
         self.filler_injector = FillerInjector()
         self.tts_engine = TTSEngine(self.chat, self.spk_emb)
         self.controller = EmotionRhythmController()

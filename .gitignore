@@ -86,3 +86,7 @@ datasets/
 
 # 参考代码
 ref/
+
+# Allow voice assets
+!voices/*.pt
+!voices/*.txt

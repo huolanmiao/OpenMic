@@ -12,9 +12,10 @@ httpx>=0.25.0
 
 # 语音合成相关 (任务三)
 # ChatTTS
-# librosa>=0.10.0
-# soundfile>=0.12.0
-# numpy>=1.24.0
+ChatTTS>=0.1.0
+librosa>=0.10.0
+soundfile>=0.12.0
+numpy>=1.24.0
 
 # Web框架 (任务四)
 fastapi>=0.104.0
