@@ -87,6 +87,7 @@ def _patched_prepare_generation_inputs(
     model_inputs = GPT._GenerationInputs(
         position_ids=position_ids,
         cache_position=cache_position,
+        use_cache=True
     )
 
     if inputs_embeds is not None and past_key_values is None:

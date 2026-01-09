@@ -71,6 +71,7 @@ class ComedyGroupChat:
         llm_config: Dict[str, Any],
         max_round: int = 25,
         agent_model_configs: Optional[Dict[str, Dict[str, Any]]] = None,
+        on_step_change: Optional[callable] = None,  # ✨ 新增：回调参数
         **kwargs
     ):
         """
@@ -88,6 +89,7 @@ class ComedyGroupChat:
         self.llm_config = llm_config
         self.max_round = max_round
         self.agent_model_configs = agent_model_configs or {}
+        self.on_step_change = on_step_change
         self.messages: List[Dict[str, Any]] = []
         
         # 创建默认模型客户端（用于selector和没有独立配置的智能体）
@@ -188,10 +190,23 @@ class ComedyGroupChat:
             Returns:
                 下一个智能体的名称，或None表示结束
             """
+            def report(stage: str, progress: float):
+                if self.on_step_change:
+                    self.on_step_change(stage, progress)
             # 如果没有消息，从ComedyDirector开始
             if not messages:
+                report("导演正在入场并制定策略...", 0.1)
                 return "ComedyDirector"
             
+            stage_messages = {
+                "ComedyDirector": ("受众分析师正在研究目标观众...", 0.2),
+                "AudienceAnalyzer": ("段子手开始头脑风暴内容...", 0.4),
+                "JokeWriter": ("表演教练正在添加情绪标注...", 0.6),
+                "PerformanceCoach": ("质量控制官正在严格审核脚本...", 0.8),
+                "QualityController": ("正在根据反馈进行优化调整...", 0.9)
+            }
+                    
+                    
             # 统计各智能体发言次数（用于判断是否在修改循环中）
             agent_counts = {}
             for msg in messages:
@@ -213,6 +228,7 @@ class ComedyGroupChat:
             
             # 如果没有找到智能体消息，从ComedyDirector开始
             if last_agent is None:
+                report("导演正在入场并制定策略...", 0.1)
                 return "ComedyDirector"
             
             # 检查是否正在进行修改循环（JokeWriter发言超过1次说明在修改）
@@ -239,6 +255,7 @@ class ComedyGroupChat:
                         return None  # 流程结束，让termination处理
                     else:
                         logger.info(f"🔄 第{qc_count}轮评估不通过，返回JokeWriter进行第{qc_count + 1}轮修改")
+                        report(f"第 {qc_count} 轮打磨：段子手正在根据反馈修改内容...", 0.9)
                         return "JokeWriter"  # 返回JokeWriter进行修改
                 
                 # 默认结束
@@ -253,6 +270,7 @@ class ComedyGroupChat:
                     if next_index < len(revision_workflow):
                         next_agent = revision_workflow[next_index]
                         logger.info(f"🔄 修改循环: {last_agent} → {next_agent}")
+                        report(f"{stage_messages.get(last_agent, ('',0))[0]}", stage_messages.get(last_agent, ('',0))[1])
                         return next_agent
                     return None
             else:
@@ -261,6 +279,7 @@ class ComedyGroupChat:
                     current_index = workflow_order.index(last_agent)
                     next_index = current_index + 1
                     if next_index < len(workflow_order):
+                        report(f"{stage_messages.get(last_agent, ('',0))[0]}", stage_messages.get(last_agent, ('',0))[1])
                         return workflow_order[next_index]
                     return None
             
@@ -343,7 +362,8 @@ class ComedyGroupChat:
             duration_minutes=duration_minutes,
             target_audience=target_audience
         )
-        
+        if self.on_step_change:
+            self.on_step_change(f"准备开始关于《{topic}》的创作...", 0.05)
         logger.info(f"开始创作流程 - 主题: {topic}, 风格: {style}")
         print(f"\n{'='*60}")
         print("🎭 开始多智能体协作创作...")
@@ -361,7 +381,8 @@ class ComedyGroupChat:
         try:
             # 使用 run 方法运行团队对话（不是 run_stream）
             result = await self.team.run(task=initial_prompt)
-            
+            if self.on_step_change:
+                self.on_step_change("正在进行最后的润色和格式整理...", 0.95)
             # 处理结果
             if hasattr(result, 'messages'):
                 for msg in result.messages:
@@ -386,6 +407,8 @@ class ComedyGroupChat:
                         
         except Exception as e:
             logger.error(f"对话过程出错: {e}")
+            if self.on_step_change:
+                self.on_step_change(f"创作中断: {str(e)}", 1.0)
             import traceback
             traceback.print_exc()
             print(f"\n⚠️ 对话过程出错: {e}")
@@ -396,7 +419,8 @@ class ComedyGroupChat:
         
         # 提取结果
         result = self._extract_result()
-        
+        if self.on_step_change:
+            self.on_step_change("脚本创作已完成！", 1.0)
         logger.info("创作流程完成")
         return result
     

@@ -23,7 +23,7 @@ OpenMic是一个创新的AI脱口秀生成系统，使用5个专业化的智能�
 - [x] **任务一**：AutoGen多智能体系统架构（30分）✅ 已完成
 - [ ] **任务二**：基于CFunSet的中文幽默内容生成（25分）
 - [x] **任务三**：专业级语音合成与表演优化（30分）✅ 已完成
-- [ ] **任务四**：系统集成与用户体验（15分）
+- [X] **任务四**：系统集成与用户体验（15分）✅ 已完成
 
 ---
 
@@ -191,7 +191,11 @@ DEEPSEEK_API_KEY=sk-your-api-key-here
 }
 ```
 
-### 3. 运行系统
+### 3. 下载音频生成模型权重
+从huggingface上下载 ChatTTS model (https://huggingface.co/2Noise/ChatTTS) 到目录 `Openmic/models`
+
+### 4. 运行系统
+系统有多种运行模式，如果希望直接在控制台上交互，可以参照下面的方法
 
 ```bash
 
@@ -210,8 +214,7 @@ python main.py --help
 # 查看智能体信息
 python main.py --info
 ```
-
-### 4. 命令行参数说明
+命令行参数说明
 
 | 参数 | 简写 | 说明 | 默认值 |
 |------|------|------|--------|
@@ -225,6 +228,19 @@ python main.py --info
 | `--debug` | - | 调试模式 | False |
 
 ---
+
+此外，我们准备了图形界面的web前端，运行方法如下：
+
+```bash
+# 运行后端服务器
+python src/api/backend_server.py
+
+# 运行前端app，此时你可以在浏览器上打开http://localhost:8501来进行图形界面交互
+streamlit run ./src/api/app.py --server.port 8501
+
+# 如果你希望能够在公网上访问这个服务器，请安装cloudflared，并使用下面的指令实现公网穿透，就可以在公网上进行访问了
+cloudflared tunnel --url http://127.0.0.1:8501
+```
 
 ## 🔧 配置其他模型
 
@@ -382,38 +398,6 @@ class HumorGenerator:
     def expand_topic(self, topic: str) -> List[str]:
         """主题扩展算法"""
         pass
-```
-
-### 任务三：语音合成模块 (`src/speech/`)
-```bash
-# 教程：语音合成模块 (详细演示见 tutorial_speech.ipynb)
-jupyter notebook tutorial_speech.ipynb
-```
-
-### 任务四：Web API模块 (`src/api/`)
-
-```python
-# 预留接口示例 - FastAPI
-from fastapi import FastAPI
-from src.api import create_app
-
-app = create_app()
-
-# 接口设计
-@app.post("/api/v1/generate")
-async def generate_comedy(request: ComedyRequest):
-    """生成脱口秀脚本"""
-    pass
-
-@app.get("/api/v1/status/{task_id}")
-async def get_status(task_id: str):
-    """获取生成进度"""
-    pass
-
-@app.get("/api/v1/audio/{script_id}")
-async def get_audio(script_id: str):
-    """获取语音音频"""
-    pass
 ```
 
 ---
