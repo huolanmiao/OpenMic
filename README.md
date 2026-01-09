@@ -18,6 +18,10 @@ OpenMic是一个创新的AI脱口秀生成系统，使用5个专业化的智能�
 | 🎤 **PerformanceCoach** | 表演教练 | 表演标记和语音指导 |
 | ✅ **QualityController** | 质量控制官 | 内容评估和质量把关 |
 
+<p align="center">
+  <img src="assets/webapi.png" alt="OpenMic AI Studio Interface" width="100%">
+</p>
+
 ## 📋 任务进度
 
 - [x] **任务一**：AutoGen多智能体系统架构（30分）✅ 已完成
