@@ -195,7 +195,20 @@ DEEPSEEK_API_KEY=sk-your-api-key-here
 从huggingface上下载 ChatTTS model (https://huggingface.co/2Noise/ChatTTS) 到目录 `Openmic/models`
 
 ### 4. 运行系统
-系统有多种运行模式，如果希望直接在控制台上交互，可以参照下面的方法
+系统有多种运行模式，我们准备了图形界面的web前端，运行方法如下：
+
+```bash
+# 运行后端服务器
+python src/api/backend_server.py
+
+# 运行前端app，此时你可以在浏览器上打开http://localhost:8501来进行图形界面交互
+streamlit run ./src/api/app.py --server.port 8501
+
+# 如果你希望能够在公网上访问这个服务器，请安装cloudflared，并使用下面的指令实现公网穿透，就可以在公网上进行访问了
+cloudflared tunnel --url http://127.0.0.1:8501
+```
+
+此外，如果希望直接在控制台上交互，可以参照下面的方法
 
 ```bash
 
@@ -228,19 +241,6 @@ python main.py --info
 | `--debug` | - | 调试模式 | False |
 
 ---
-
-此外，我们准备了图形界面的web前端，运行方法如下：
-
-```bash
-# 运行后端服务器
-python src/api/backend_server.py
-
-# 运行前端app，此时你可以在浏览器上打开http://localhost:8501来进行图形界面交互
-streamlit run ./src/api/app.py --server.port 8501
-
-# 如果你希望能够在公网上访问这个服务器，请安装cloudflared，并使用下面的指令实现公网穿透，就可以在公网上进行访问了
-cloudflared tunnel --url http://127.0.0.1:8501
-```
 
 ## 🔧 配置其他模型
 
