@@ -140,12 +140,14 @@ if btn_generate_script:
                     task_id = resp.json()["task_id"]
                     result = poll_task(task_id, status, prefix="创作")
                     
-                    if result:
+                    if result["script"]:
                         # 成功获取剧本，存入 Session State
                         st.session_state.script_text = result["script"]
                         # 清空旧的音频，因为剧本变了
                         st.session_state.audio_data = None
                         status.update(label="剧本创作完成！", state="complete", expanded=False)
+                    else:
+                        status.update(label="剧本创作失败！请检查API key和模型是否配置正确", state="error", expanded=False)
             except Exception as e:
                 st.error(f"请求失败: {e}")
 
@@ -210,7 +212,6 @@ with col_audio:
             # 后端返回的是: "data:audio/wav;base64,....."
             # st.audio 支持直接播放这种 URL 格式，或者是 bytes
             try:
-                # 方法 A: 直接传 Base64 URL (部分浏览器可能支持不佳，推荐转bytes)
                 audio_url = audio_info["audio_url"]
                 # 提取 base64 数据部分
                 b64_data = audio_url.split(",")[1]

@@ -123,7 +123,7 @@ async def process_text_task(task_id: str, request: GenerationRequest):
         # with open("/data/ctl/projects/OpenMic/outputs/comedy_20260109_130803.json", 'r') as f:
         #     result = json.load(f)
         # 任务完成后的最终处理
-        final_script = result.get("performance_markers")
+        final_script = result.get("final_script") or result.get("performance_markers")
         
         TASKS[task_id]["result"] = {"script": final_script}
         TASKS[task_id]["status"] = "completed"
