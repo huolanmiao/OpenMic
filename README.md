@@ -25,7 +25,7 @@ OpenMic是一个创新的AI脱口秀生成系统，使用5个专业化的智能�
 ## 📋 任务进度
 
 - [x] **任务一**：AutoGen多智能体系统架构（30分）✅ 已完成
-- [ ] **任务二**：基于CFunSet的中文幽默内容生成（25分）
+- [x] **任务二**：基于CFunSet的中文幽默内容生成（25分）✅ 已完成
 - [x] **任务三**：专业级语音合成与表演优化（30分）✅ 已完成
 - [X] **任务四**：系统集成与用户体验（15分）✅ 已完成
 
@@ -65,13 +65,10 @@ OpenMic/
 │   │   ├── __init__.py
 │   │   └── settings.py          # ConfigManager单例类
 │   │
-│   ├── generators/              # 📦 内容生成模块（任务二预留）
+│   ├── speech/                  # 📦 语音合成模块
 │   │   └── __init__.py
 │   │
-│   ├── speech/                  # 📦 语音合成模块（任务三核心）
-│   │   └── __init__.py
-│   │
-│   └── api/                     # 📦 Web API模块（任务四预留）
+│   └── api/                     # 📦 Web API模块
 │       └── __init__.py
 │
 ├── tests/                       # 测试目录
@@ -188,6 +185,28 @@ DEEPSEEK_API_KEY=sk-your-api-key-here
             "model": "deepseek-chat",
             "api_key": "sk-your-api-key-here",
             "base_url": "https://api.deepseek.com/v1"
+        }
+    ],
+    "temperature": 0.8,
+    "max_tokens": 4096
+}
+```
+
+**方法三**：使用本地模型（建议使用ZhenghanYU/CFunModel，这个模型在CFunSet训练过，对中文幽默任务效果很好）
+
+```bash
+pip install vllm
+vllm serve path-to-your-model --port 8000 --trust-remote-code --served-model-name CFunModel
+```
+
+编辑 `config/llm_config.json`：
+```json
+{
+    "config_list": [
+        {
+            "model": "CFunModel",
+            "api_key": "none",
+            "base_url": "http://localhost:8000/v1"
         }
     ],
     "temperature": 0.8,
@@ -376,32 +395,6 @@ class CustomAgent(BaseComedyAgent):
             description="自定义智能体的简短描述",
             **kwargs
         )
-```
-
----
-
-## 🔌 后续任务接口预留
-
-### 任务二：内容生成模块 (`src/generators/`)
-
-```python
-# 预留接口示例
-from src.generators import HumorGenerator, CFunSetLoader
-
-class HumorGenerator:
-    """幽默内容生成器"""
-    
-    def load_cfunset(self, dataset_path: str):
-        """加载CFunSet数据集"""
-        pass
-    
-    def generate_setup_punchline(self, topic: str) -> dict:
-        """生成Setup-Punchline结构笑话"""
-        pass
-    
-    def expand_topic(self, topic: str) -> List[str]:
-        """主题扩展算法"""
-        pass
 ```
 
 ---
